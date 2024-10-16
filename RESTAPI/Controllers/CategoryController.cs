@@ -55,4 +55,11 @@ public class CategoryController : ControllerBase
         categories.Remove(category);
         return Ok("You delete this category");
     }
+    
+    [HttpGet("/categories")]
+    public ActionResult<Category> GetAllCategory()
+    {
+        var category = categories.ToList();
+        return Ok(category);
+    }
 }
