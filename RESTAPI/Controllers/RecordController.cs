@@ -50,7 +50,7 @@ public class RecordController: ControllerBase
         };
         record.Id = records.Max(p => p.Id) + 1;
         records.Add(record);
-        return CreatedAtAction(nameof(GetRecordById), new { id = record.Id }, record);
+        return CreatedAtAction(nameof(GetRecordById), new { record_id = record.Id }, record);
     }
     
     [HttpGet("/record")]
