@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using RESTAPI.Data;
 using RESTAPI.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace RESTAPI.Controllers;
 
@@ -7,59 +9,59 @@ namespace RESTAPI.Controllers;
 [ApiController]
 public class CategoryController : ControllerBase
 {
-    
-    private static List<Category> categories = new List<Category>
-    {
-        new Category { Id = 1, CategoryName = "CategoryTest1"},
-        new Category { Id = 2, CategoryName = "CategoryTest2"}
-    };
+    private readonly AppDbContext _db;
 
+    public CategoryController(AppDbContext db)
+    {
+        _db = db;
+    }
     
     [HttpGet("/category")]
-    public ActionResult<Category> GetCategory(string categoryName)
+    public async Task<ActionResult<Category>> GetCategoryAsync(string categoryName)
     {
-        var category = categories.FirstOrDefault(p => p.CategoryName == categoryName);
+        var category = await _db.Categories.FirstOrDefaultAsync(p => p.CategoryName == categoryName);
         if (category == null)
         {
-            return NotFound();
+            return NotFound($"Category '{categoryName}' not found.");
         }
         return Ok(category);
     }
     
     [HttpPost("/category")]
-    public IActionResult AddCategory(string categoryName)
+    public async Task<IActionResult> AddCategoryAsync(string categoryName)
     {
-        var currentCategory = categories.FirstOrDefault(p => p.CategoryName == categoryName);
-        if (currentCategory == null)
+        var existingCategory = await _db.Categories.AnyAsync(p => p.CategoryName == categoryName);
+        if (existingCategory)
         {
-            Category category = new Category()
-            {
-                CategoryName = categoryName,
-            };
-            category.Id = categories.Max(p => p.Id) + 1;
-            categories.Add(category);
-            return Ok(category);
+            return BadRequest($"Category '{categoryName}' already exists.");
         }
-        
-        return BadRequest("You already have this category");
+
+        var category = new Category { CategoryName = categoryName };
+        await _db.Categories.AddAsync(category);
+        await _db.SaveChangesAsync();
+
+        return Ok("Add a new Category");
     }
     
     [HttpDelete("/category")]
-    public IActionResult DeleteCategory(string categoryName)
+    public async Task<IActionResult> DeleteCategoryAsync(string categoryName)
     {
-        var category = categories.FirstOrDefault(p => p.CategoryName == categoryName);
+        var category = await _db.Categories.FirstOrDefaultAsync(p => p.CategoryName == categoryName);
         if (category == null)
         {
-            return NotFound();
+            return NotFound($"Category '{categoryName}' not found.");
         }
-        categories.Remove(category);
-        return Ok("You delete this category");
+
+        _db.Categories.Remove(category);
+        await _db.SaveChangesAsync();
+        return Ok($"Category '{categoryName}' has been deleted.");
     }
     
+    
     [HttpGet("/categories")]
-    public ActionResult<Category> GetAllCategory()
+    public async Task<ActionResult<IEnumerable<Category>>> GetAllCategoriesAsync()
     {
-        var category = categories.ToList();
-        return Ok(category);
+        var categories = await _db.Categories.ToListAsync();
+        return Ok(categories);
     }
 }
