@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RESTAPI.Data;
@@ -14,6 +15,14 @@ public class UserController(AppDbContext db) : ControllerBase
     {
         var validator = new UserValidator();
         var result = await validator.ValidateAsync(new User { Name = userName });
+        
+        var validatorString = new StringParamValidator();
+        var validationResult = await validatorString.ValidateAsync(userName);
+        
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        }
 
         if (!result.IsValid)
         {
@@ -67,6 +76,12 @@ public class UserController(AppDbContext db) : ControllerBase
     {
         var validationResult = await ValidateUserNameAsync(userName);
         if (validationResult != null) return validationResult;
+
+        var checkInUser = db.Users.FirstOrDefault(u=> u.Name == userName);
+        if (checkInUser != null)
+        {
+            return BadRequest("A user with this name already exists");
+        }
 
         var currency = await GetCurrencyAsync(currencyId);
         if (currency == null)
