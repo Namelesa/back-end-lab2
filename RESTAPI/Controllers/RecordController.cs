@@ -5,25 +5,24 @@ using RESTAPI.Models;
 
 namespace RESTAPI.Controllers;
 
-[Route("[controller]")]
+[Route("record")]
 [ApiController]
-public class RecordController : ControllerBase
-{   
-    private readonly AppDbContext _db;
-
-    public RecordController(AppDbContext db)
+public class RecordController(AppDbContext db) : ControllerBase
+{
+    private async Task<Record?> GetRecordById(int recordId)
     {
-        _db = db;
+        return await db.Records
+            .Include(r => r.User)
+            .Include(r => r.Category)
+            .Include(r => r.Currency)
+            .FirstOrDefaultAsync(r => r.Id == recordId);
     }
-    
+
     [HttpGet("/record/{recordId}")]
     public async Task<IActionResult> GetRecordByIdAsync(int recordId)
     {
-        var record = await _db.Records
-            .Include(r => r.User)
-            .Include(r => r.Category)
-            .FirstOrDefaultAsync(r => r.Id == recordId);
-        
+        var record = await GetRecordById(recordId);
+
         if (record == null)
         {
             return NotFound($"Record with ID {recordId} not found.");
@@ -31,30 +30,27 @@ public class RecordController : ControllerBase
 
         return Ok(record);
     }
-    
+
     [HttpDelete("/record/{recordId}")]
     public async Task<IActionResult> DeleteRecordByIdAsync(int recordId)
     {
-        var record = await _db.Records
-            .Include(r => r.User)
-            .Include(r => r.Category)
-            .FirstOrDefaultAsync(r => r.Id == recordId);
+        var record = await GetRecordById(recordId);
 
         if (record == null)
         {
             return NotFound($"Record with ID {recordId} not found.");
         }
-        
-        _db.Records.Remove(record);
-        await _db.SaveChangesAsync();
+
+        db.Records.Remove(record);
+        await db.SaveChangesAsync();
 
         return Ok($"Record with ID {recordId} has been successfully deleted.");
     }
-    
+
     [HttpPost("/record")]
     public async Task<IActionResult> AddRecordAsync(int userId, int categoryId, decimal total, int? currencyId = null)
     {
-        var user = await _db.Users
+        var user = await db.Users
             .Include(u => u.Currency)
             .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -62,16 +58,16 @@ public class RecordController : ControllerBase
             return BadRequest("Invalid user ID.");
         }
 
-        var categoryExists = await _db.Categories.AnyAsync(c => c.Id == categoryId);
-        if (!categoryExists)
+        var category = await db.Categories.FindAsync(categoryId);
+        if (category == null)
         {
             return BadRequest("Invalid category ID.");
         }
-        
+
         Currency? currency;
         if (currencyId.HasValue)
         {
-            currency = await _db.Currencies.FindAsync(currencyId.Value);
+            currency = await db.Currencies.FindAsync(currencyId.Value);
             if (currency == null)
             {
                 return BadRequest("Invalid currency ID.");
@@ -90,23 +86,22 @@ public class RecordController : ControllerBase
             TotalPrice = total,
             CurrencyId = currency.Id
         };
-    
-        await _db.Records.AddAsync(record);
-        await _db.SaveChangesAsync();
 
-        return Ok("Add a new Record");
+        await db.Records.AddAsync(record);
+        await db.SaveChangesAsync();
+
+        return Ok("Record added successfully.");
     }
 
-    
     [HttpGet("/record")]
     public async Task<IActionResult> GetRecordAsync(int? userId, int? categoryId)
     {
-        if (userId == null && categoryId == null)
+        if (!userId.HasValue && !categoryId.HasValue)
         {
             return BadRequest("You must provide at least one filter parameter.");
         }
 
-        var filteredRecords = _db.Records
+        var query = db.Records
             .Include(r => r.User)
             .Include(r => r.Category)
             .Include(r => r.Currency)
@@ -114,15 +109,15 @@ public class RecordController : ControllerBase
 
         if (userId.HasValue)
         {
-            filteredRecords = filteredRecords.Where(p => p.UserId == userId);
+            query = query.Where(r => r.UserId == userId);
         }
 
         if (categoryId.HasValue)
         {
-            filteredRecords = filteredRecords.Where(p => p.CategoryId == categoryId);
+            query = query.Where(r => r.CategoryId == categoryId);
         }
-        
-        var results = await filteredRecords.ToListAsync();
+
+        var results = await query.ToListAsync();
 
         if (!results.Any())
         {

@@ -2,43 +2,62 @@ using Microsoft.AspNetCore.Mvc;
 using RESTAPI.Data;
 using RESTAPI.Models;
 using Microsoft.EntityFrameworkCore;
+using RESTAPI.Validators;
 
 namespace RESTAPI.Controllers;
 
 [Route("[controller]")]
 [ApiController]
-public class CategoryController : ControllerBase
+public class CategoryController(AppDbContext db) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public CategoryController(AppDbContext db)
+    private async Task<IActionResult?> ValidateCategoryNameAsync(string categoryName)
     {
-        _db = db;
+        var validator = new StringParamValidator();
+        var validationResult = await validator.ValidateAsync(categoryName);
+        
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+        }
+
+        return null;
+    }
+
+    private async Task<Category?> FindCategoryByNameAsync(string categoryName)
+    {
+        return await db.Categories.FirstOrDefaultAsync(p => p.CategoryName == categoryName);
     }
     
     [HttpGet("/category")]
-    public async Task<ActionResult<Category>> GetCategoryAsync(string categoryName)
+    public async Task<IActionResult> GetCategoryAsync(string categoryName)
     {
-        var category = await _db.Categories.FirstOrDefaultAsync(p => p.CategoryName == categoryName);
+        IActionResult? validationResult = await ValidateCategoryNameAsync(categoryName);
+        if (validationResult != null) return validationResult;
+
+        var category = await FindCategoryByNameAsync(categoryName);
         if (category == null)
         {
             return NotFound($"Category '{categoryName}' not found.");
         }
+
         return Ok(category);
     }
     
     [HttpPost("/category")]
     public async Task<IActionResult> AddCategoryAsync(string categoryName)
     {
-        var existingCategory = await _db.Categories.AnyAsync(p => p.CategoryName == categoryName);
-        if (existingCategory)
+        var validationResult = await ValidateCategoryNameAsync(categoryName);
+        if (validationResult != null) return validationResult;
+
+        var existingCategory = await FindCategoryByNameAsync(categoryName);
+        if (existingCategory != null)
         {
             return BadRequest($"Category '{categoryName}' already exists.");
         }
 
         var category = new Category { CategoryName = categoryName };
-        await _db.Categories.AddAsync(category);
-        await _db.SaveChangesAsync();
+        await db.Categories.AddAsync(category);
+        await db.SaveChangesAsync();
 
         return Ok("Add a new Category");
     }
@@ -46,22 +65,24 @@ public class CategoryController : ControllerBase
     [HttpDelete("/category")]
     public async Task<IActionResult> DeleteCategoryAsync(string categoryName)
     {
-        var category = await _db.Categories.FirstOrDefaultAsync(p => p.CategoryName == categoryName);
+        var validationResult = await ValidateCategoryNameAsync(categoryName);
+        if (validationResult != null) return validationResult;
+
+        var category = await FindCategoryByNameAsync(categoryName);
         if (category == null)
         {
             return NotFound($"Category '{categoryName}' not found.");
         }
 
-        _db.Categories.Remove(category);
-        await _db.SaveChangesAsync();
+        db.Categories.Remove(category);
+        await db.SaveChangesAsync();
         return Ok($"Category '{categoryName}' has been deleted.");
     }
-    
     
     [HttpGet("/categories")]
     public async Task<ActionResult<IEnumerable<Category>>> GetAllCategoriesAsync()
     {
-        var categories = await _db.Categories.ToListAsync();
+        var categories = await db.Categories.ToListAsync();
         return Ok(categories);
     }
 }

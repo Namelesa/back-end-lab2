@@ -2,24 +2,45 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RESTAPI.Data;
 using RESTAPI.Models;
+using RESTAPI.Validators;
 
 namespace RESTAPI.Controllers;
 
 [Route("[controller]")]
 [ApiController]
-public class UserController : ControllerBase
+public class UserController(AppDbContext db) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public UserController(AppDbContext db)
+    private async Task<IActionResult?> ValidateUserNameAsync(string userName)
     {
-        _db = db;
+        var validator = new UserValidator();
+        var result = await validator.ValidateAsync(new User { Name = userName });
+
+        if (!result.IsValid)
+        {
+            return BadRequest(result.Errors.Select(e => e.ErrorMessage));
+        }
+
+        return null;
+    }
+    private async Task<Currency?> GetCurrencyAsync(int? currencyId)
+    {
+        if (currencyId.HasValue)
+        {
+            var currency = await db.Currencies.FindAsync(currencyId.Value);
+            if (currency == null)
+            {
+                return null;
+            }
+            return currency;
+        }
+
+        return await db.Currencies.FirstOrDefaultAsync(c => c.Id == 1);
     }
     
     [HttpGet("/user/{id}")]
     public async Task<ActionResult<User>> GetUserByIdAsync(int id)
     {
-        var user = await _db.Users.FindAsync(id);
+        var user = await db.Users.FindAsync(id);
         if (user == null)
         {
             return NotFound($"User with ID {id} not found.");
@@ -30,36 +51,27 @@ public class UserController : ControllerBase
     [HttpDelete("/user/{id}")]
     public async Task<IActionResult> DeleteUserByIdAsync(int id)
     {
-        var user = await _db.Users.FindAsync(id);
+        var user = await db.Users.FindAsync(id);
         if (user == null)
         {
             return NotFound($"User with ID {id} not found.");
         }
 
-        _db.Users.Remove(user);
-        await _db.SaveChangesAsync();
+        db.Users.Remove(user);
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPost("/user")]
     public async Task<IActionResult> AddUserAsync(string userName, int? currencyId)
     {
-        Currency? currency = null;
-        if (currencyId.HasValue)
+        var validationResult = await ValidateUserNameAsync(userName);
+        if (validationResult != null) return validationResult;
+
+        var currency = await GetCurrencyAsync(currencyId);
+        if (currency == null)
         {
-            currency = await _db.Currencies.FindAsync(currencyId.Value);
-            if (currency == null)
-            {
-                return BadRequest("Invalid currency ID.");
-            }
-        }
-        else
-        {
-            currency = await _db.Currencies.FirstOrDefaultAsync(c => c.Id == 1);
-            if (currency == null)
-            {
-                return BadRequest("Default currency is not available. Please specify a currency.");
-            }
+            return BadRequest("Invalid currency ID or default currency not available.");
         }
 
         var user = new User
@@ -68,18 +80,16 @@ public class UserController : ControllerBase
             CurrencyId = currency.Id
         };
 
-        await _db.Users.AddAsync(user);
-        await _db.SaveChangesAsync();
+        await db.Users.AddAsync(user);
+        await db.SaveChangesAsync();
 
-        return Ok("Add a new User");
-
+        return Ok("User successfully added.");
     }
-
     
     [HttpGet("/users")]
     public async Task<ActionResult<IEnumerable<User>>> GetAllUsersAsync()
     {
-        var users = await _db.Users.ToListAsync();
+        var users = await db.Users.ToListAsync();
         return Ok(users);
     }
 }
