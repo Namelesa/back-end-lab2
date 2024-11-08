@@ -1,0 +1,8 @@
+﻿services:
+  restapi:
+    image: restapi
+    build:
+      context: .
+      dockerfile: RESTAPI/Dockerfile
+    ports:
+      - "5050:8080"
