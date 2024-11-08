@@ -55,7 +55,7 @@ public class UserController : ControllerBase
         }
         else
         {
-            currency = await _db.Currencies.FirstOrDefaultAsync(c => c.Name == "USD");
+            currency = await _db.Currencies.FirstOrDefaultAsync(c => c.Id == 1);
             if (currency == null)
             {
                 return BadRequest("Default currency is not available. Please specify a currency.");
