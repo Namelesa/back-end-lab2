@@ -4,9 +4,6 @@ using RESTAPI.Initializer;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-
 string? getEnv = Environment.GetEnvironmentVariable("DefaultConnection");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
