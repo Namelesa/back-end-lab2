@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RESTAPI.Data;
@@ -9,6 +10,7 @@ namespace RESTAPI.Controllers;
 
 [Route("[controller]")]
 [ApiController]
+[Authorize]
 public class UserController(AppDbContext db) : ControllerBase
 {
     private async Task<IActionResult?> ValidateUserNameAsync(string userName)

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RESTAPI.Data;
 using RESTAPI.Models;
@@ -8,6 +9,7 @@ namespace RESTAPI.Controllers;
 
 [Route("[controller]")]
 [ApiController]
+[Authorize]
 public class CurrencyController: ControllerBase
 {
     private readonly AppDbContext _db;
