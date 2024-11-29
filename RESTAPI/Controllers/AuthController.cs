@@ -27,4 +27,17 @@ public class AuthController : ControllerBase
 
         return result;
     }
+    
+    [AllowAnonymous]
+    [HttpPost("Register")]
+    public async Task<ActionResult<string>> Register(RegisterRequestModel request)
+    {
+        var result = await _jwtService.AddUserWithCurrencyAsync(request);
+        if (result == null)
+        {
+            return Ok("User register");
+            
+        }
+        return Unauthorized();
+    }
 }
