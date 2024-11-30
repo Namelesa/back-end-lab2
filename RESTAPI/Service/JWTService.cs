@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RESTAPI.Data;
 using RESTAPI.Models;
@@ -14,16 +15,14 @@ namespace RESTAPI.Service;
 public class JWTService
 {
     private readonly AppDbContext _db;
-    private readonly IConfiguration _config;
     private readonly PasswordHasher<User> _passwordHasher;
     private readonly JwtOptions _jwtOptions;
 
-    public JWTService(AppDbContext db, IConfiguration config, JwtOptions jwtOptions)
+    public JWTService(AppDbContext db, IOptions<JwtOptions> jwtOptions)
     {
         _db = db;
-        _config = config;
         _passwordHasher = new PasswordHasher<User>();
-        _jwtOptions = jwtOptions;
+        _jwtOptions = jwtOptions.Value;
     }
 
     public async Task<LoginResponseModel?> Authenticate(LoginRequestModel request)
