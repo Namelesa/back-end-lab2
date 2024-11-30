@@ -16,12 +16,14 @@ public class JWTService
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
     private readonly PasswordHasher<User> _passwordHasher;
+    private readonly JwtOptions _jwtOptions;
 
-    public JWTService(AppDbContext db, IConfiguration config)
+    public JWTService(AppDbContext db, IConfiguration config, JwtOptions jwtOptions)
     {
         _db = db;
         _config = config;
         _passwordHasher = new PasswordHasher<User>();
+        _jwtOptions = jwtOptions;
     }
 
     public async Task<LoginResponseModel?> Authenticate(LoginRequestModel request)
@@ -37,10 +39,10 @@ public class JWTService
         if (passwordVerificationResult != PasswordVerificationResult.Success)
             return null;
         
-        var issuer = _config["JWTConfig:Issuer"];
-        var audience = _config["JWTConfig:Audience"];
-        var key = _config["JWTConfig:Key"];
-        var tokenMin = _config.GetValue<int>("JWTConfig:TokenValidityMins");
+        var issuer = _jwtOptions.Issuer;
+        var audience = _jwtOptions.Audience;
+        var key = _jwtOptions.Key;
+        var tokenMin = Convert.ToInt32(_jwtOptions.TokenValidityMins);
         var tokenExpiryTimeStap = DateTime.UtcNow.AddMinutes(tokenMin);
 
         var tokenDescriptor = new SecurityTokenDescriptor

@@ -9,10 +9,22 @@ using RESTAPI.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//string? getEnv = Environment.GetEnvironmentVariable("DefaultConnection");
+string? getEnv = Environment.GetEnvironmentVariable("DefaultConnection");
+string? issuer = Environment.GetEnvironmentVariable("Issuer");
+string? audience = Environment.GetEnvironmentVariable("Audience");
+string? key = Environment.GetEnvironmentVariable("Key");
+string? tokenValidityMins = Environment.GetEnvironmentVariable("TokenValidityMins");
+
+builder.Services.Configure<JwtOptions>(options =>
+{
+    options.Issuer = issuer;
+    options.Audience = audience;
+    options.Key = key;
+    options.TokenValidityMins = tokenValidityMins;
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(getEnv));
 
 builder.Services.AddAuthentication(options =>
 {
@@ -25,9 +37,9 @@ builder.Services.AddAuthentication(options =>
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidIssuer = builder.Configuration["JWTConfig:Issuer"],
-        ValidAudience = builder.Configuration["JWTConfig:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTConfig:Key"])),
+        ValidIssuer = issuer,
+        ValidAudience = audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
